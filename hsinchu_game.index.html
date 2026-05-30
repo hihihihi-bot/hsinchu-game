@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瘋狗九降風！我的時空機耗能才沒那麼高勒</title>
+    <style>
+        * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; display: flex; overflow: hidden; background-color: #1a1a1a; }
+        
+        /* 左側遊戲控制面板 */
+        #panel {
+            width: 420px; height: 100%; background: #2c3e50; color: #ecf0f1;
+            padding: 20px; display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+            z-index: 1000; overflow-y: auto; flex-shrink: 0;
+        }
+        h1 { font-size: 22px; color: #f1c40f; text-align: center; margin-top: 0; border-bottom: 2px solid #f1c40f; padding-bottom: 10px; }
+        .status-box { background: #34495e; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+        .stamina-bar { width: 100%; background: #7f8c8d; height: 16px; border-radius: 10px; overflow: hidden; margin-top: 5px; }
+        #stamina-fill { width: 100%; background: #2ecc71; height: 100%; transition: width 0.3s; }
+        
+        /* 景點照片顯示區域 */
+        #photo-container {
+            width: 100%; height: 150px; background: #222; border: 3px solid #f1c40f; 
+            border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: center; 
+            align-items: center; overflow: hidden; position: relative; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        
+        #display-area { flex-grow: 1; background: #34495e; padding: 15px; border-radius: 8px; margin-bottom: 12px; overflow-y: auto; font-size: 14px; line-height: 1.6; }
+        .event-log { color: #e67e22; font-weight: bold; margin-top: 10px; border-top: 1px dashed #7f8c8d; padding-top: 5px; }
+        .story-text { color: #f39c12; font-weight: bold; font-size: 16px; }
+        #inventory { font-weight: bold; color: #1abc9c; }
+        
+        /* 右側：真實街道幾何地圖 */
+        #map-container {
+            flex-grow: 1; height: 100%; background: #f4edd2; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; position: relative;
+        }
+        #map-title { color: #4e342e; font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+        #map-svg-wrapper {
+            width: 100%; max-width: 800px; height: 85%; max-height: 650px;
+            background: #f7f1db; border: 4px double #6d4c41; border-radius: 12px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1), 0 6px 12px rgba(0,0,0,0.15);
+        }
+        
+        .street-main { stroke: #d7ccc8; stroke-width: 8; stroke-linecap: round; fill: none; }
+        .street-label { font-size: 11px; fill: #8d6e63; opacity: 0.8; }
+        .river { stroke: #90caf9; stroke-width: 6; stroke-linecap: round; fill: none; }
+        .moat { stroke: #b3e5fc; stroke-width: 5; fill: none; stroke-dasharray: 4 4; }
+        
+        .map-node { fill: #3498db; stroke: #fff; stroke-width: 3; cursor: pointer; transition: all 0.2s; }
+        .map-node:hover { fill: #e67e22; r: 16; }
+        .node-visited { fill: #2ecc71; opacity: 0.7; }
+        .node-current { fill: #e74c3c; stroke: #f1c40f; stroke-width: 4; r: 18; animation: pulse 1s infinite alternate; }
+        .node-text { font-size: 12px; font-weight: bold; fill: #2c3e50; pointer-events: none; text-anchor: middle; }
+        
+        @keyframes pulse { from { r: 14; stroke-width: 3; } to { r: 19; stroke-width: 5; } }
+
+        /* 結局畫面 */
+        #overlay {
+            display: none; position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center;
+            color: white; text-align: center; flex-direction: column;
+        }
+        #overlay h2 { font-size: 40px; color: #f1c40f; }
+        #overlay button { padding: 10px 20px; font-size: 18px; margin-top: 20px; cursor: pointer; background: #e74c3c; color: white; border: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="panel">
+        <h1>瘋狗九降風！<br><span style="font-size:14px; color:#bdc3c7;">我的時空機耗能才沒那麼高勒</span></h1>
+        
+        <div id="photo-container">
+            <svg width="100%" height="100%" viewBox="0 0 400 150">
+                <rect width="400" height="150" fill="#2c3e50"/>
+                <text x="200" y="85" fill="#f1c40f" font-size="18" font-weight="bold" text-anchor="middle">⏳ 時空盒相機定位中...</text>
+            </svg>
+        </div>
+
+        <div class="status-box">
+            <div>⚡ 體力值：<span id="stamina-text">100</span> / 100</div>
+            <div class="stamina-bar"><div id="stamina-fill"></div></div>
+        </div>
+        <div class="status-box">
+            <div>🎒 已收集物資 (<span id="count-text">0</span>/5)：</div>
+            <div id="inventory">空空如也</div>
+        </div>
+        <div id="display-area">
+            <p class="story-text">【時空盒子安全投影提示】</p>
+            <p id="story-box">請直接用滑鼠點擊右側真實比例的<b>新竹舊城區街道圖</b>。每抵達一個地點，上方相機將同步顯示該景點的實景照片！</p>
+            <div id="event-box"></div>
+        </div>
+    </div>
+
+    <div id="map-container">
+        <div id="map-title"> Jap 🧭 清道光九年．竹塹舊城道路與景點連動圖</div>
+        <div id="map-svg-wrapper">
+            <svg id="game-svg" width="100%" height="100%" viewBox="0 0 800 650" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="430" cy="330" r="270" class="moat" />
+                <line x1="700" y1="230" x2="160" y2="430" class="street-main" />
+                <text x="630" y="245" class="street-label" transform="rotate(-15, 630, 245)">中正路 (東門街)</text>
+                <line x1="430" y1="330" x2="150" y2="100" class="street-main" />
+                <text x="240" y="160" class="street-label" transform="rotate(35, 240, 160)">北門大街</text>
+                <line x1="330" y1="360" x2="150" y2="520" class="street-main" />
+                <text x="210" y="470" class="street-label" transform="rotate(-40, 210, 470)">中山路</text>
+                <line x1="390" y1="100" x2="450" y2="580" class="street-main" />
+                <text x="400" y="500" class="street-label" transform="rotate(80, 400, 500)">中央路 (暗街仔)</text>
+                <path d="M 120 180 Q 350 70 520 180 T 750 200" class="river" />
+                <text x="640" y="180" style="fill:#4fc3f7; font-size:11px; font-weight:bold;">隆恩圳古水路</text>
+
+                <circle id="node-1" cx="600" cy="270" r="14" class="map-node" onclick="goToLocation('1')" />
+                <text x="600" y="300" class="node-text">① 迎曦門(東門)</text>
+                <circle id="node-2" cx="330" cy="360" r="14" class="map-node" onclick="goToLocation('2')" />
+                <text x="330" y="390" class="node-text">② 都城隍廟</text>
+                <circle id="node-3" cx="260" cy="190" r="14" class="map-node" onclick="goToLocation('3')" />
+                <text x="260" y="165" class="node-text">③ 北門大街</text>
+                <circle id="node-4" cx="200" cy="370" r="14" class="map-node" onclick="goToLocation('4')" />
+                <text x="200" y="400" class="node-text">④ 潛園林家</text>
+                <circle id="node-5" cx="170" cy="115" r="14" class="map-node" onclick="goToLocation('5')" />
+                <text x="170" y="95" class="node-text">⑤ 長和宮(外媽祖)</text>
+                <circle id="node-6" cx="640" cy="150" r="14" class="map-node" onclick="goToLocation('6')" />
+                <text x="640" y="130" class="node-text">⑥ 隆恩圳口</text>
+                <circle id="node-7" cx="220" cy="155" r="14" class="map-node" onclick="goToLocation('7')" />
+                <text x="160" y="160" class="node-text">⑦ 鄭氏進士第</text>
+                <circle id="node-8" cx="290" cy="215" r="14" class="map-node" onclick="goToLocation('8')" />
+                <text x="350" y="220" class="node-text">⑧ 楊氏節孝坊</text>
+                <circle id="node-9" cx="410" cy="310" r="14" class="map-node" onclick="goToLocation('9')" />
+                <text x="410" y="290" class="node-text">⑨ 暗街仔(中央路)</text>
+                <circle id="node-10" cx="230" cy="450" r="14" class="map-node" onclick="goToLocation('10')" />
+                <text x="230" y="480" class="node-text">⑩ 成仁門(西門)</text>
+            </svg>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <h2 id="end-title">遊戲結束</h2>
+        <p id="end-desc" style="max-width: 600px; font-size: 18px; line-height: 1.6; padding: 0 20px;"></p>
+        <button onclick="window.location.reload()">重新時空穿越</button>
+    </div>
+
+    <script>
+        // ==================== 100% 離線遊戲數據與內建景點照片 (SVG 技術) ====================
+        const LOCATIONS = {
+            "1": { 
+                name: "東門城（迎曦門）", item: "竹塹城磚磚塊", desc: "剛落成不久的宏偉石磚城門，燕尾屋脊直刺天際。", 
+                story: "道光九年（1829年）正是竹塹石城宣告完工的年份！你眼前的這座城門剛蓋好，石牌上的「迎曦」二字墨跡彷彿才剛乾。",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#e74c3c"/><path d="M120,110 L280,110 L260,70 L140,70 Z" fill="#c0392b"/><path d="M100,73 Q140,65 140,70 L260,70 Q260,65 300,73 Q260,50 200,50 Q140,50 100,73" fill="#962d22"/><rect x="170" y="110" width="60" height="40" fill="#7f8c8d"/><text x="200" y="95" fill="#f1c40f" font-size="14" font-weight="bold" text-anchor="middle">迎 曦</text></svg>`
+            },
+            "2": { 
+                name: "新竹都城隍廟", item: "道光年間貢丸湯", desc: "香火鼎盛，攤販雲集，瀰漫著令人垂涎的香氣。", 
+                story: "此時的城隍廟已經是竹塹城的信仰中心。廟前擠滿了感謝神明庇佑的香客，旁邊賣著用木棍純手工搥打的清代貢丸湯。",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#d35400"/><circle cx="200" cy="85" r="35" fill="#f39c12" stroke="#d35400" stroke-width="4"/><path d="M185,115 L190,140 M215,115 L210,140" stroke="#7f8c8d" stroke-width="5"/><circle cx="180" cy="70" r="10" fill="#ecc94b"/><circle cx="220" cy="75" r="12" fill="#ecc94b"/><text x="200" y="35" fill="#fff" font-size="14" text-anchor="middle">♨ 廟口熱騰騰的貢丸湯</text></svg>`
+            },
+            "3": { 
+                name: "北門大街", item: "老字號漢方藥材", desc: "竹塹城最繁華的商業街，商賈往來絡繹不絕。", 
+                story: "這條街是通往舊港的必經之路。因為剛蓋好城牆，北門大街的店面地價飛漲，可以說是全台灣當時最頂級的「黃金店面一條街」。",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#8e44ad"/><rect x="130" y="40" width="60" height="80" fill="#f1c40f" rx="5"/><rect x="210" y="40" width="60" height="80" fill="#e67e22" rx="5"/><line x1="160" y1="40" x2="160" y2="120" stroke="#333"/><line x1="240" y1="40" x2="240" y2="120" stroke="#333"/><text x="200" y="140" fill="#fff" font-size="14" text-anchor="middle">漢方百草中藥行</text></svg>`
+            },
+            "4": { 
+                name: "潛園遺址", item: "文人墨寶詩集", desc: "優雅的江南園林風格，隱約傳出古琴與吟詩聲。", 
+                story: "雖然歷史上著名的潛園落成還要再等幾年，但此時全台首富林家已經在這邊購地，你走在圍牆外，能看到工匠們正在搬運太湖石。",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#27ae60"/><path d="M50,150 Q130,80 200,120 T350,150 Z" fill="#7bc043"/><rect x="180" y="60" width="50" height="40" fill="#f39c12"/><path d="M170,60 L240,60 L205,40 Z" fill="#d35400"/><text x="200" y="135" fill="#fff" font-size="14" text-anchor="middle">林家江南風假山園林</text></svg>`
+            },
+            "5": { 
+                name: "長和宮（外媽祖）", item: "媽祖平安符", desc: "郊商雲集的信仰中心，保佑著討海人與往來客商。", 
+                story: "因為蓋在北門外，所以被稱為「外媽祖」。這時候的長和宮不僅是拜拜的地方，更是竹塹城最大的商業公會總部。",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#f1c40f"/><polygon points="200,20 250,70 230,130 170,130 150,70" fill="#e74c3c"/><text x="200" y="80" fill="#f1c40f" font-size="16" font-weight="bold" text-anchor="middle">天上聖母</text><text x="200" y="105" fill="#f1c40f" font-size="12" text-anchor="middle">平安符</text></svg>`
+            },
+            "6": { 
+                name: "隆恩圳水路", item: "清澈的灌溉圳水", desc: "聽得到潺潺流水聲，是孕育竹塹農業的重要水源。", 
+                story: "這裡是隆恩圳的分流。道光年間的新竹還是個農業社會，水權就是大家的命根子。這時的水極為清澈，甚至可以直接捧起來喝！",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#29b6f6"/><path d="M 0 80 Q 100 50 200 80 T 400 80 L 400 150 L 0 150 Z" fill="#0288d1"/><text x="200" y="120" fill="#fff" font-size="14" text-anchor="middle">🌊 奔流不息的隆恩古圳</text></svg>`
+            },
+            "7": { 
+                name: "進士第", item: "開台進士紀念牌", desc: "「開台進士」鄭用錫的宅邸，門額上的「進士第」匾額威風顯赫。", 
+                story: "鄭用錫在道光三年考中進士，是「台灣歷史上第一位在地進士」。他剛主導完竹塹城的築城工程，大宅邸門口正立著高高的旗杆。",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#34495e"/><rect x="80" y="30" width="240" height="90" fill="#2c3e50" stroke="#f1c40f" stroke-width="4"/><text x="200" y="85" fill="#f1c40f" font-size="28" font-weight="bold" font-family="KaiTi, 標楷體" text-anchor="middle">進 士 第</text></svg>`
+            },
+            "8": { 
+                name: "楊氏節孝坊", item: "石雕麒麟拓印", desc: "北門街附近剛落成幾年的精美石坊，青斗石與泉州白石交錯。", 
+                story: "這座牌坊是在道光四年為了表彰節婦楊居娘而設立的。此時它在陽光下顯得極新，牌坊上的石雕麒麟栩栩如生，手工精細。",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#bdc3c7"/><rect x="120" y="20" width="160" height="15" fill="#7f8c8d"/><rect x="140" y="35" width="120" height="115" fill="#95a5a6"/><rect x="170" y="70" width="60" height="80" fill="#bdc3c7"/><text x="200" y="55" fill="#333" font-size="12" font-weight="bold" text-anchor="middle">楊氏節孝坊</text></svg>`
+            },
+            "9": { 
+                name: "暗街仔（中央路）", item: "清代手工竹編籃", desc: "竹塹城最早發展的市集之一，街道狹窄不見天日。", 
+                story: "因為兩邊的店家把屋簷蓋得太近，幾乎把天空都遮住了，所以即使是大白天走在裡面也像晚上。這裡充滿了打鐵聲與叫賣聲。",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#7e57c2"/><circle cx="200" cy="75" r="45" fill="none" stroke="#ffe082" stroke-width="6"/><line x1="155" y1="75" x2="245" y2="75" stroke="#ffe082" stroke-width="2"/><line x1="200" y1="30" x2="200" y2="120" stroke="#ffe082" stroke-width="2"/><text x="200" y="140" fill="#fff" font-size="13" text-anchor="middle">職人純手工竹編工藝</text></svg>`
+            },
+            "10": { 
+                name: "西門城遺址", item: "守城士兵的舊頭盔", desc: "通往外坪與香山方向的西大門，城牆厚實。", 
+                story: "相較於熱鬧的東門，西門顯得比較嚴肅。因為城門外連接的是香山一帶，常常有外地武裝流民或盜匪出沒。城門上的守兵正警惕地檢查行人。",
+                photo: `<svg width="100%" height="100%" viewBox="0 0 400 150"><rect width="400" height="150" fill="#3e2723"/><path d="M150,150 L150,60 L250,60 L250,150 Z" fill="#5d4037"/><rect x="180" y="90" width="40" height="60" fill="#1a0c00"/><text x="200" y="45" fill="#fff" font-size="14" text-anchor="middle">🛡️ 緊閉的竹塹西大門</text></svg>`
+            }
+        };
+
+        const CHANCE_EVENTS = [
+            { text: "突然颳起一陣猛烈的【新竹九降風】！你差點被吹飛，舉步維艱。", change: -15 },
+            { text: "在路邊遇到熱心的挑夫，載你一程並請你喝了奉茶。", change: 10 },
+            { text: "走在泥濘的竹塹古道上，不小心跌了一跤！", change: -10 },
+            { text: "路過市集，熱情的店家看你穿著奇特，送了你一個水煮番薯充飢。", change: 15 }
+        ];
+
+        let stamina = 100;
+        let inventory = new Set();
+        let visited = new Set();
+        let currentId = null;
+
+        function goToLocation(id) {
+            if (id === currentId && visited.has(id)) return;
+            let loc = LOCATIONS[id];
+            
+            // 1. 扣除移動基本體力
+            let cost = Math.floor(Math.random() * 8) + 15;
+            stamina -= cost;
+            let logText = `🏃‍♂️ 你頂著九降風前往【${loc.name}】，消耗體力 ${cost} 點。`;
+
+            // 2. 標記為已造訪並獲得物資
+            let isNew = !visited.has(id);
+            if (isNew) {
+                visited.add(id);
+                inventory.add(loc.item);
+            }
+            currentId = id; 
+
+            // 3. 隨機機會命運 (60% 機率)
+            let eventText = "";
+            if (stamina > 0 && inventory.size < 5 && Math.random() < 0.60) {
+                let event = CHANCE_EVENTS[Math.floor(Math.random() * CHANCE_EVENTS.length)];
+                stamina += event.change;
+                if (stamina > 100) stamina = 100;
+                eventText = `<br>🎲【機會命運】${event.text} (${event.change > 0 ? '+' : ''}${event.change} 體力)`;
+            }
+
+            // 4. 更新介面 UI 與顯示景點相片
+            updateUI(id, loc.name, loc.story, loc.item, isNew, logText, eventText);
+            updateSvgMapStyles();
+
+            // 5. 判斷勝負條件
+            setTimeout(() => {
+                if (inventory.size >= 5) {
+                    endGame(true, `🎉 時空傳送成功！<br><br>你成功收集齊全物資，順利回到了 2026 年的新竹東門城圓環！`);
+                } else if (stamina <= 0) {
+                    endGame(false, `💀 體力耗盡，挑戰失敗！<br><br>你永遠地留在了道光九年，成為了新竹歷史的一部分……`);
+                }
+            }, 400);
+        }
+
+        function updateSvgMapStyles() {
+            for (let id in LOCATIONS) {
+                let nodeElement = document.getElementById(`node-${id}`);
+                if (!nodeElement) continue;
+
+                nodeElement.classList.remove("node-current", "node-visited");
+
+                if (id === currentId) {
+                    nodeElement.classList.add("node-current");
+                } else if (visited.has(id)) {
+                    nodeElement.classList.add("node-visited");
+                }
+            }
+        }
+
+        function updateUI(id, name, story, item, isNew, log, event) {
+            if (stamina < 0) stamina = 0;
+            document.getElementById("stamina-text").innerText = stamina;
+            document.getElementById("stamina-fill").style.width = stamina + "%";
+            document.getElementById("stamina-fill").style.backgroundColor = stamina < 30 ? "#e74c3c" : "#2ecc71";
+            
+            document.getElementById("count-text").innerText = inventory.size;
+            document.getElementById("inventory").innerHTML = Array.from(inventory).length > 0 ? Array.from(inventory).join("<br> 📦 ") : "空空如也";
+            
+            // 💡 更新上方照片容器的 HTML 內容
+            document.getElementById("photo-container").innerHTML = LOCATIONS[id].photo;
+
+            document.getElementById("story-box").innerHTML = `<span class="story-text">【${name}】</span><br>${story}<br><br><span style="color:#2ecc71; font-weight:bold;">🎁 獲得物資：【${item}】${isNew ? '' : ' (重複造訪)'}</span>`;
+            document.getElementById("event-box").innerHTML = `<div class="event-log">${log}${event}</div>`;
+        }
+
+        function endGame(isWin, message) {
+            document.getElementById("overlay").style.display = "flex";
+            document.getElementById("end-title").innerText = isWin ? "✨ 時空機器啟動 ✨" : "💀 永遠留在了過去 💀";
+            document.getElementById("end-title").style.color = isWin ? "#f1c40f" : "#e74c3c";
+            document.getElementById("end-desc").innerHTML = message;
+        }
+    </script>
+</body>
+</html>
