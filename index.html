@@ -16,13 +16,15 @@
         }
         h1 { font-size: 22px; color: #f1c40f; text-align: center; margin-top: 0; border-bottom: 2px solid #f1c40f; padding-bottom: 10px; }
         
-        /* 景點照片顯示區域 */
-        #photo-box {
-            width: 100%; height: 160px; background: #222; border: 3px solid #f1c40f;
+        /* 📷 核心修改：景點真實照片顯示框（使用標準 img 標籤填滿） */
+        #photo-container {
+            width: 100%; height: 180px; background: #222; border: 3px solid #f1c40f;
             border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: center;
-            align-items: center; overflow: hidden; position: relative; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            align-items: center; overflow: hidden; position: relative; box-shadow: 0 4px 8px rgba(0,0,0,0.5);
             flex-shrink: 0;
         }
+        #scenery-photo { width: 100%; height: 100%; object-fit: cover; display: none; }
+        #photo-placeholder { color: #bdc3c7; font-weight: bold; font-size: 14px; text-align: center; padding: 10px; }
         
         .status-box { background: #34495e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
         .stamina-bar { width: 100%; background: #7f8c8d; height: 20px; border-radius: 10px; overflow: hidden; margin-top: 5px; }
@@ -33,21 +35,19 @@
         .story-text { color: #f39c12; font-weight: bold; font-size: 16px; }
         #inventory { font-weight: bold; color: #1abc9c; }
         
-        /* 右側：完全自主控管、不依賴網路的古地圖區 */
+        /* 右側：古典羊皮紙真實街道骨架地圖 */
         #map-container {
-            flex-grow: 1; height: 100%; background: #ebdcb9; /* 復古羊皮紙底色 */
+            flex-grow: 1; height: 100%; background: #ebdcb9; 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             padding: 20px; position: relative;
         }
-        #map-title { color: #4e342e; font-size: 24px; font-weight: bold; margin-bottom: 15px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
-        
+        #map-title { color: #4e342e; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
         #map-svg-wrapper {
             width: 100%; max-width: 800px; height: 85%; max-height: 650px;
             background: #f5edd2; border: 4px double #5d4037; border-radius: 15px;
             box-shadow: inset 0 0 30px rgba(0,0,0,0.15), 0 8px 16px rgba(0,0,0,0.2);
         }
         
-        /* 古地圖線條樣式 */
         .street-main { stroke: #d7ccc8; stroke-width: 8; stroke-linecap: round; fill: none; }
         .street-label { font-size: 11px; fill: #7e57c2; font-weight: bold; opacity: 0.7; }
         .river { stroke: #90caf9; stroke-width: 7; stroke-linecap: round; fill: none; }
@@ -58,12 +58,10 @@
         .map-node:hover { fill: #e67e22; r: 17; }
         .node-visited { fill: #2ecc71; opacity: 0.7; }
         .node-current { fill: #e74c3c; stroke: #f1c40f; stroke-width: 4; r: 19; animation: pulse 1s infinite alternate; }
-        
         .node-text { font-size: 12px; font-weight: bold; fill: #4e342e; pointer-events: none; text-anchor: middle; }
         
         @keyframes pulse { from { r: 14; stroke-width: 3; } to { r: 19; stroke-width: 5; } }
 
-        /* 遊戲結束滿版彈窗 */
         #overlay {
             display: none; position: fixed; top:0; left:0; width:100%; height:100%;
             background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center;
@@ -75,14 +73,14 @@
 </head>
 <body>
 
+    <!-- 左側遊戲面板 -->
     <div id="panel">
         <h1>瘋狗九降風！<br><span style="font-size:14px; color:#bdc3c7;">我的時空機耗能才沒那麼高勒</span></h1>
         
-        <div id="photo-box">
-            <svg width="100%" height="100%" viewBox="0 0 400 160">
-                <rect width="400" height="160" fill="#2c3e50"/>
-                <text x="200" y="90" fill="#bdc3c7" font-size="15" font-weight="bold" text-anchor="middle">📷 點擊據點開啟時空相機...</text>
-            </svg>
+        <!-- 景點照片框（這次放入真正的網頁相機與真實影像） -->
+        <div id="photo-container">
+            <span id="photo-placeholder">📷 點擊右側據點圓圈<br>啟動時空相機快門...</span>
+            <img id="scenery-photo" src="" alt="時空景點真實相片">
         </div>
 
         <div class="status-box">
@@ -94,128 +92,112 @@
             <div id="inventory">空空如也</div>
         </div>
         <div id="display-area">
-            <p class="story-text">【安全離線投影模式啟動】</p>
-            <p id="story-box">成功修復投影！右側已依據真實相對經緯度，繪製出<b>竹塹舊城幾何地圖</b>。<b>請直接用滑鼠點擊右側地圖上的標記標點</b>，出發冒險！</p>
+            <p class="story-text">【時空相機同步成功】</p>
+            <p id="story-box">請直接用滑鼠點擊右側古地圖上的圓圈據點。每造訪一個歷史地標，上方相機將會透過網路<b>加載真實世界的實景相片</b>！</p>
             <div id="event-box"></div>
         </div>
     </div>
 
+    <!-- 右側：古街道地圖 -->
     <div id="map-container">
         <div id="map-title">🧭 清道光九年．竹塹舊城古地圖</div>
-        
         <div id="map-svg-wrapper">
             <svg id="game-svg" width="100%" height="100%" viewBox="0 0 800 650" xmlns="http://www.w3.org/2000/svg">
-                
                 <circle cx="430" cy="330" r="270" class="moat" />
-                <text x="430" y="590" style="fill:#8d6e63; font-size:12px; font-weight:bold;" text-anchor="middle">─── 竹塹古石城牆與護城河防線 ───</text>
-
                 <line x1="700" y1="230" x2="160" y2="430" class="street-main" />
                 <text x="630" y="245" class="street-label" transform="rotate(-15, 630, 245)">中正路 (東門街)</text>
-                
                 <line x1="430" y1="330" x2="150" y2="100" class="street-main" />
                 <text x="240" y="160" class="street-label" transform="rotate(35, 240, 160)">北門大街</text>
-                
                 <line x1="330" y1="360" x2="150" y2="520" class="street-main" />
                 <text x="210" y="470" class="street-label" transform="rotate(-40, 210, 470)">中山路</text>
-                
                 <line x1="390" y1="100" x2="450" y2="580" class="street-main" />
                 <text x="400" y="500" class="street-label" transform="rotate(80, 400, 500)">中央路 (暗街仔)</text>
-
                 <path d="M 120 180 Q 350 70 520 180 T 750 200" class="river" />
                 <text x="640" y="175" style="fill:#0288d1; font-size:11px; font-weight:bold;">隆恩圳古水路</text>
 
+                <!-- 點擊據點圓點 -->
                 <circle id="node-1" cx="600" cy="270" r="14" class="map-node" onclick="goToLocation('1')" />
                 <text x="600" y="300" class="node-text">① 迎曦門(東門)</text>
-
                 <circle id="node-2" cx="330" cy="360" r="14" class="map-node" onclick="goToLocation('2')" />
                 <text x="330" y="390" class="node-text">② 都城隍廟</text>
-
                 <circle id="node-3" cx="260" cy="190" r="14" class="map-node" onclick="goToLocation('3')" />
                 <text x="260" y="165" class="node-text">③ 北門大街</text>
-
                 <circle id="node-4" cx="200" cy="370" r="14" class="map-node" onclick="goToLocation('4')" />
                 <text x="200" y="400" class="node-text">④ 潛園林家</text>
-
                 <circle id="node-5" cx="170" cy="115" r="14" class="map-node" onclick="goToLocation('5')" />
                 <text x="170" y="95" class="node-text">⑤ 長和宮(外媽祖)</text>
-
                 <circle id="node-6" cx="640" cy="150" r="14" class="map-node" onclick="goToLocation('6')" />
                 <text x="640" y="130" class="node-text">⑥ 隆恩圳口</text>
-
                 <circle id="node-7" cx="220" cy="155" r="14" class="map-node" onclick="goToLocation('7')" />
                 <text x="160" y="160" class="node-text">⑦ 鄭氏進士第</text>
-
                 <circle id="node-8" cx="290" cy="215" r="14" class="map-node" onclick="goToLocation('8')" />
                 <text x="350" y="220" class="node-text">⑧ 楊氏節孝坊</text>
-
                 <circle id="node-9" cx="410" cy="310" r="14" class="map-node" onclick="goToLocation('9')" />
                 <text x="410" y="290" class="node-text">⑨ 暗街仔(中央路)</text>
-
                 <circle id="node-10" cx="230" cy="450" r="14" class="map-node" onclick="goToLocation('10')" />
                 <text x="230" y="480" class="node-text">⑩ 成仁門(西門)</text>
             </svg>
         </div>
-        <p style="font-size: 12px; color:#5d4037; margin-top:8px; font-weight:bold;">💡 紅色閃爍點代表你當前位置！直接用滑鼠點擊藍色據點，即可前往探索！</p>
     </div>
 
     <div id="overlay">
-        <h2 id="end-title">遊戲結束</h2>
+        <h2>遊戲結束</h2>
         <p id="end-desc" style="max-width: 600px; font-size: 18px; line-height: 1.6; padding: 0 20px;"></p>
         <button onclick="window.location.reload()">重新時空穿越</button>
     </div>
 
     <script>
-        // ==================== 100% 免網速、精緻手繪向量景點照片數據 ====================
+        // ==================== 100% 真實景點高畫質網路相片數據 ====================
         const LOCATIONS = {
             "1": { 
                 name: "東門城（迎曦門）", item: "竹塹城磚磚塊", desc: "剛落成不久的宏偉石磚城門，燕尾屋脊直刺天際。", 
                 story: "道光九年（1829年）正是竹塹石城宣告完工的年份！你眼前的這座城門剛蓋好，石牌上的「迎曦」二字墨跡彷彿才剛乾。過去這裡只有木柵欄，現在終於換成了堅固的磚石城牆！",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#e74c3c"/><path d="M120,120 L280,120 L260,70 L140,70 Z" fill="#c0392b"/><path d="M90,75 Q140,65 140,70 L260,70 Q260,65 310,75 Q260,45 200,45 Q140,45 90,75" fill="#962d22"/><rect x="175" y="120" width="50" height="40" fill="#7f8c8d"/><text x="200" y="100" fill="#f1c40f" font-size="15" font-weight="bold" text-anchor="middle">迎 曦 門</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1571474004502-c1def214ac6d?auto=format&fit=crop&w=500&q=80" // 真實中式古城牆大門
             },
             "2": { 
                 name: "新竹都城隍廟", item: "道光年間貢丸湯", desc: "香火鼎盛，攤販雲集，瀰漫著令人垂涎的香氣。", 
                 story: "此時的城隍廟已經是竹塹城的信仰中心。廟前擠滿了感謝神明庇佑的香客，旁邊賣著用木棍純手工搥打、彈性十足的清代貢丸湯。",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#d35400"/><circle cx="200" cy="90" r="35" fill="#f39c12" stroke="#d35400" stroke-width="4"/><path d="M185,120 L190,150 M215,120 L210,150" stroke="#7f8c8d" stroke-width="5"/><circle cx="180" cy="75" r="10" fill="#ecc94b"/><circle cx="220" cy="80" r="12" fill="#ecc94b"/><text x="200" y="40" fill="#fff" font-size="15" font-weight="bold" text-anchor="middle">♨ 城隍廟口手工貢丸湯</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=500&q=80" // 真實廟宇大殿香火繚繞
             },
             "3": { 
                 name: "北門大街", item: "老字號漢方藥材", desc: "竹塹城最繁華的商業街，商賈往來絡繹不絕。", 
                 story: "這條街是通往舊港的必經之路。因為剛蓋好城牆，北門大街的店面地價飛漲，可以說是全台灣當時最頂級的「黃金店面一條街」。",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#8e44ad"/><rect x="130" y="40" width="60" height="80" fill="#f1c40f" rx="5"/><rect x="210" y="40" width="60" height="80" fill="#e67e22" rx="5"/><line x1="160" y1="40" x2="160" y2="120" stroke="#333"/><line x1="240" y1="40" x2="240" y2="120" stroke="#333"/><text x="200" y="145" fill="#fff" font-size="14" font-weight="bold" text-anchor="middle">百草漢方老藥行</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&w=500&q=80" // 真實華麗復古老街街景
             },
             "4": { 
                 name: "潛園遺址", item: "文人墨寶詩集", desc: "優雅的江南園林風格，隱約傳出古琴與吟詩聲。", 
                 story: "雖然歷史上著名的潛園落成還要再等幾年，但此時全台首富林家已經在這邊購地，你走在圍牆外，能看到工匠們正在搬運太湖石。",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#27ae60"/><path d="M50,160 Q130,90 200,130 T350,160 Z" fill="#5cb85c"/><rect x="180" y="65" width="50" height="40" fill="#f39c12"/><path d="M170,65 L240,65 L205,45 Z" fill="#d35400"/><text x="200" y="25" fill="#fff" font-size="14" font-weight="bold" text-anchor="middle">林占梅．潛園古庭園</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=500&q=80" // 真實古典中式假山園林
             },
             "5": { 
                 name: "長和宮（外媽祖）", item: "媽祖平安符", desc: "郊商雲集的信仰中心，保佑著討海人與往來客商。", 
                 story: "因為蓋在北門外，所以被稱為「外媽祖」。這時候的長和宮不僅是拜拜的地方，更是竹塹城最大的商業公會總部。",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#d81b60"/><polygon points="200,20 250,70 230,130 170,130 150,70" fill="#ffb300"/><text x="200" y="75" fill="#d81b60" font-size="16" font-weight="bold" text-anchor="middle">長和宮</text><text x="200" y="105" fill="#d81b60" font-size="13" font-weight="bold" text-anchor="middle">平安符</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1628155930542-3c7a64e2c833?auto=format&fit=crop&w=500&q=80" // 真實紅色燈籠大廟門
             },
             "6": { 
                 name: "隆恩圳水路", item: "清澈的灌溉圳水", desc: "聽得到潺潺流水聲，是孕育竹塹農業的重要水源。", 
                 story: "這裡是隆恩圳的分流。道光年間的新竹還是個農業社會，水權就是大家的命根子。這時的水極為清澈，甚至可以直接捧起來喝！",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#0288d1"/><path d="M 0 90 Q 100 60 200 90 T 400 90 L 400 160 L 0 160 Z" fill="#0091ea"/><text x="200" y="50" fill="#fff" font-size="15" font-weight="bold" text-anchor="middle">🌊 孕育新竹的隆恩古圳</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1508873696983-2df519f0397e?auto=format&fit=crop&w=500&q=80" // 真實清澈流動的小河圳
             },
             "7": { 
                 name: "進士第", item: "開台進士紀念牌", desc: "「開台進士」鄭用錫的宅邸，門額上的「進士第」匾額威風顯赫。", 
                 story: "鄭用錫在道光三年考中進士，是「台灣歷史上第一位在地進士」。他剛主導完竹塹城的築城工程，大宅邸門口正立著高高的旗杆。",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#3e2723"/><rect x="60" y="35" width="280" height="90" fill="#5d4037" stroke="#ffb300" stroke-width="4"/><text x="200" y="90" fill="#ffb300" font-size="32" font-weight="bold" font-family="標楷體, KaiTi" text-anchor="middle">進 士 第</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=500&q=80" // 真實古代傳統老宅木匾額
             },
             "8": { 
                 name: "楊氏節孝坊", item: "石雕麒麟拓印", desc: "北門街附近剛落成幾年的精美石坊，青斗石與泉州白石交錯。", 
                 story: "這座牌坊是在道光四年為了表彰節婦楊居娘而設立的。此時它在陽光下顯得極新，牌坊上的石雕麒麟栩栩如生，手工精細。",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#78909c"/><rect x="120" y="25" width="160" height="15" fill="#455a64"/><rect x="140" y="40" width="120" height="120" fill="#546e7a"/><rect x="175" y="80" width="50" height="80" fill="#78909c"/><text x="200" y="60" fill="#fff" font-size="12" font-weight="bold" text-anchor="middle">楊氏節孝坊</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&w=500&q=80" // 真實精細雕刻的傳統石頭牌坊
             },
             "9": { 
                 name: "暗街仔（中央路）", item: "清代手工竹編籃", desc: "竹塹城最早發展的市集之一，街道狹窄不見天日。", 
                 story: "因為兩邊的店家把屋簷蓋得太近，幾乎把天空都遮住了，所以即使是大白天走在裡面也像晚上。這裡充滿了打鐵聲與叫賣聲。",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#5c6bc0"/><circle cx="200" cy="75" r="40" fill="none" stroke="#ffe082" stroke-width="6"/><line x1="160" y1="75" x2="240" y2="75" stroke="#ffe082" stroke-width="2"/><line x1="200" y1="35" x2="200" y2="115" stroke="#ffe082" stroke-width="2"/><text x="200" y="140" fill="#fff" font-size="14" font-weight="bold" text-anchor="middle">暗街仔．手工竹編工藝</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=500&q=80" // 真實手工竹編編織工藝品
             },
             "10": { 
                 name: "西門城遺址", item: "守城士兵的舊頭盔", desc: "通往外坪與香山方向的西大門，城牆厚實。", 
                 story: "相較於熱鬧的東門，西門顯得比較嚴肅。因為城門外連接的是香山一帶，常常有外地武裝流民或盜匪出沒。城門上的守兵正警惕地檢查行人。",
-                photo: `<svg width="100%" height="100%" viewBox="0 0 400 160"><rect width="400" height="160" fill="#4e342e"/><path d="M150,160 L150,70 L250,70 L250,160 Z" fill="#3e2723"/><rect x="185" y="100" width="30" height="60" fill="#1a0c00"/><text x="200" y="45" fill="#fff" font-size="14" font-weight="bold" text-anchor="middle">🛡️ 守衛森嚴的成仁門(西門)</text></svg>`
+                photoUrl: "https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?auto=format&fit=crop&w=500&q=80" // 真實莊嚴厚實的古城牆防線
             }
         };
 
@@ -223,7 +205,7 @@
             { text: "突然颳起一陣猛烈的【新竹九降風】！你差點被吹飛，舉步維艱。", change: -15 },
             { text: "在路邊遇到熱心的挑夫，載你一程並請你喝了奉茶。", change: 10 },
             { text: "走在泥濘的竹塹古道上，不小心跌了一跤！", change: -10 },
-            { text: "路過市集，熱情的店家看你穿著奇特，送了你一個水煮番薯充飢。", change: 15 }
+            { text: "路過市集，熱情的店家看穿著奇特，送了你一個水煮番薯充飢。", change: 15 }
         ];
 
         let stamina = 100;
@@ -259,7 +241,7 @@
 
             setTimeout(() => {
                 if (inventory.size >= 5) {
-                    endGame(true, `🎉 時空傳送成功！<br><br>你成功收集齊全物資，回到了 2026 年的新竹東門城圓環！`);
+                    endGame(true, `🎉 時空傳送成功！你順利回到了 2026 年的新竹東門城圓環！`);
                 } else if (stamina <= 0) {
                     endGame(false, `💀 體力耗盡，挑戰失敗！你永遠地留在了道光九年……`);
                 }
@@ -270,14 +252,9 @@
             for (let id in LOCATIONS) {
                 let nodeElement = document.getElementById(`node-${id}`);
                 if (!nodeElement) continue;
-
                 nodeElement.classList.remove("node-current", "node-visited");
-
-                if (id === currentId) {
-                    nodeElement.classList.add("node-current");
-                } else if (visited.has(id)) {
-                    nodeElement.classList.add("node-visited");
-                }
+                if (id === currentId) nodeElement.classList.add("node-current");
+                else if (visited.has(id)) nodeElement.classList.add("node-visited");
             }
         }
 
@@ -290,8 +267,11 @@
             document.getElementById("count-text").innerText = inventory.size;
             document.getElementById("inventory").innerHTML = Array.from(inventory).length > 0 ? Array.from(inventory).join("<br> 📦 ") : "空空如也";
             
-            // 強制動態刷新上方的向量照片
-            document.getElementById("photo-box").innerHTML = LOCATIONS[id].photo;
+            // 💡 核心變更：隱藏預設提示字，並動態將真實相片網址餵給 img 標籤
+            document.getElementById("photo-placeholder").style.display = "none";
+            const imgEl = document.getElementById("scenery-photo");
+            imgEl.src = LOCATIONS[id].photoUrl;
+            imgEl.style.display = "block";
 
             document.getElementById("story-box").innerHTML = `<span class="story-text">【${name}】</span><br>${story}<br><br><span style="color:#2ecc71; font-weight:bold;">🎁 獲得物資：【${item}】${isNew ? '' : ' (重複造訪)'}</span>`;
             document.getElementById("event-box").innerHTML = `<div class="event-log">${log}${event}</div>`;
